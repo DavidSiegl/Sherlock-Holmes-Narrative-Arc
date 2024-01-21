@@ -2,8 +2,16 @@ import os
 import re
 import pandas as pd
 import string
+import nltk
 
 from collections import defaultdict
+
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('wordnet')
+nltk.download('vader_lexicon')
+nltk.download('maxent_ne_chunker')
+nltk.download('words')
 
 from source.functions import remove_numeric, segment_text
 
@@ -53,4 +61,21 @@ def preprocessing_narrative_coherence(df_sherlock):
     df_sherlock_segments_narrative['segment_num'] = values[:len(df_sherlock_segments_narrative)]
     
     return df_sherlock_segments_narrative
+
+
+def preprocessing_temporal_usage(df_sherlock):
+    df_sherlock['text_prepro_temp'] = df_sherlock['text_prepro'].str.lower()
+    translator = str.maketrans('', '', string.punctuation)
+    df_sherlock['text_prepro_temp'] = df_sherlock['text_prepro_temp'].apply(lambda x: x.translate(translator))
+    stopwords = nltk.corpus.stopwords.words('english')
+
+    df_sherlock['text_prepro_temp'] = df_sherlock['text_prepro_temp'].apply(lambda x: ' '.join([word for word in x.split() if word not in (stopwords)]))
+    df_sherlock['text_prepro_temp'] = df_sherlock['text_prepro_temp'].apply(lambda x: nltk.tokenize.word_tokenize(x))
+    df_sherlock['segments_temp'] = df_sherlock['text_prepro_temp'].apply(segment_text)
+
+    df_sherlock_segments_temp = df_sherlock.explode('segments_temp')
+    values = list(range(1, 6)) * ((len(df_sherlock_segments_temp) // 5) + 1)
+    df_sherlock_segments_temp['segment_num'] = values[:len(df_sherlock_segments_temp)]
+    
+    return df_sherlock_segments_temp
 
