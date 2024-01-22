@@ -10,5 +10,5 @@ run
 - View the code as a pre-rendered and documented Jupyter Notebook     
     ```sherlock.ipynb```
     
-- Run the code yourself 
+- Run the code yourself
     ```sherlock.py```
