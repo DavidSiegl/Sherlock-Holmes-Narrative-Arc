@@ -6,7 +6,7 @@ A Master's Thesis about detecting basic plot structures within the Complete Adve
 run 
 ```pip install -r requirements.txt``` (Python version 3.11 is recommended)
 
-also make sure that the required spaCy model package is installed
+also make sure that the required spaCy model is installed
 ```<python-version> -m spacy download en_core_web_md```
 
 ## Usage
