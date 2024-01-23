@@ -17,28 +17,30 @@ def eda(df_sherlock):
     df_sherlock_publications.reset_index(inplace=True)
     all_years = range(df_sherlock_publications['year'].min(), df_sherlock_publications['year'].max() + 1)
     df_sherlock_publications = df_sherlock_publications.set_index('year').reindex(all_years, fill_value=0).reset_index()
+    
+    plt.figure(1)
     sns.barplot(df_sherlock_publications, x='year', y='title', color='black')
     plt.xticks(rotation=90)
     plt.title('Publications of Sherlock Holmes stories over time')
     plt.xlabel('Year')
     plt.ylabel('Count')
-    plt.show()
     
     df_sherlock['word_counts'] = df_sherlock['text'].apply(lambda x: len(x.split()))
+    
+    plt.figure(2)
     sns.histplot(df_sherlock, x='word_counts', kde=False)
     plt.title('Distribution of word counts')
     plt.xlabel('Word Count')
     plt.ylabel('Count')
-    plt.show()
      
     print(df_sherlock.nlargest(5, 'word_counts')[["title",'word_counts']])
     
     df_sherlock["avg_sent_len"] = df_sherlock["text"].map(lambda x: np.mean([len(w.split()) for w in nltk.tokenize.sent_tokenize(x)]))
+    plt.figure(3)
     sns.histplot(df_sherlock, x='avg_sent_len', kde=True)
     plt.title('Distribution of average sentence length')
     plt.xlabel('Avg Sentence Length')
     plt.ylabel('Count')
-    plt.show()
  
     all_text = ' '.join(df_sherlock['text_lemmed'])
     all_text = nltk.word_tokenize(all_text)
@@ -50,11 +52,11 @@ def eda(df_sherlock):
         words.append(word)
         frequency.append(count)
 
+    plt.figure(4)
     sns.barplot(x = frequency, y = words, color='black')
     plt.title('Most frequent words across all texts')
     plt.xlabel('Count')
     plt.ylabel('Words')
-    plt.show()
     
     df_sherlock['text_prepro_ngrams'] = df_sherlock['text_lemmed'].apply(lambda x: ' '.join([word for word in x.split() if word not in (stopwords)]))
 
@@ -63,17 +65,20 @@ def eda(df_sherlock):
     count_values = bigrams.toarray().sum(axis=0)
     ngram_freq = pd.DataFrame(sorted([(count_values[i], k) for k, i in cv.vocabulary_.items()], reverse = True))
     ngram_freq.columns = ["frequency", "ngram"]
+    
+    plt.figure(5)
     sns.barplot(x=ngram_freq['frequency'][:25], y=ngram_freq['ngram'][:25], color='black')
     plt.title('Top 25 Most Frequently Occuring Bigrams')
     plt.xlabel('Ngrams')
     plt.ylabel('Count')
-    plt.show()
     
     cv2 = CountVectorizer(ngram_range=(3,3))
     trigrams = cv2.fit_transform(df_sherlock['text_prepro_ngrams'])
     count_values = trigrams.toarray().sum(axis=0)
     ngram_freq = pd.DataFrame(sorted([(count_values[i], k) for k, i in cv2.vocabulary_.items()], reverse = True))
     ngram_freq.columns = ["frequency", "ngram"]
+    
+    plt.figure(6)
     sns.barplot(x=ngram_freq['frequency'][:25], y=ngram_freq['ngram'][:25], color='black')
     plt.title('Top 25 Most Frequently Occuring Trigrams')
     plt.xlabel('Ngrams')

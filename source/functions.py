@@ -19,6 +19,10 @@ def lem_text(text):
     lemmed_words = [lemmatizer.lemmatize(word) for word in text]
     return ' '.join(lemmed_words)
 
+def count_matches(tokens, word_list):
+    count = sum([1 for token in tokens if token in word_list])
+    return count
+
 
 def min_max_scale_column(df, new_column_name, col_to_norm, col_length):
     """this function first computes tf-idf on a dataframe and then scales the retrieved values to a range between 0 and 1"""
@@ -28,3 +32,11 @@ def min_max_scale_column(df, new_column_name, col_to_norm, col_length):
     scaler = MinMaxScaler()
     df[new_column_name] = scaler.fit_transform(df[[new_column_name]])
     return df
+
+
+def group_df(df, value):
+    """this function takes as an input a df and groups it according to the corresponding segment numbers for further ANOVA testing"""
+    ls = []
+    for i in range(1, df['segment_num'].nunique() + 1):
+        ls.append(df[df['segment_num'] == i][value])
+    return ls
