@@ -1,7 +1,5 @@
-# Sherlock-Holmes-Narrative-Arc
+# Measuring Plot in the Age of Distant Reading. A study in the search for the narrative arc within the stories of Sherlock Holmes.
 
-**Measuring Plot in the Age of Distant Reading. A study in the search for the narrative arc within the stories of Sherlock Holmes.**
----
 A Master's Thesis about detecting basic plot structures within the Complete Adventures of Sherlock Holmes with the help of Distant Reading and NLP.
 
 ## Setup
