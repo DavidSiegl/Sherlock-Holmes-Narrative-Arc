@@ -2,8 +2,14 @@ import re
 import nltk
 import math
 import pandas as pd
+import spacy
+import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 lemmatizer = nltk.stem.WordNetLemmatizer()
 vader = SentimentIntensityAnalyzer()
@@ -78,7 +84,124 @@ def get_sentiment_scores(sentence_list):
         scores.append(score['compound'])
     return scores
 
+
 def extract_entities(text):
     pos_tags = nltk.pos_tag(text)
     tree = nltk.ne_chunk(pos_tags)
     return tree
+
+
+def count_entities(parse_tree, *labels):
+    """this function takes as input a parsed ner tree and one or more labels and then computes the frequencies for the given label(s)"""
+    tree = parse_tree
+    count = 0
+    for subtree in tree.subtrees():
+        if subtree.label() in labels:
+            count += 1
+    return count
+
+
+def most_common_entities(row, labels):
+    """helper function for extracting the most common entities across all texts"""
+    tree = row
+    entities = []
+    for label in labels:
+        entities.extend([subtree.leaves() for subtree in tree.subtrees(lambda t: t.label() == label)])
+    flattened_entities = [item for sublist in entities for item in sublist]
+    if flattened_entities:
+        most_common_entity = max(set(flattened_entities), key=flattened_entities.count)
+        return most_common_entity
+    else:
+        return ''
+    
+def extract_events(text):
+    """this function applies the basic spacy pipeline for event extraction to the textual input and then extracts certain entities based on the ruleset provided afterwards"""
+    
+    nlp = spacy.load('en_core_web_md')
+
+    processed_text = ' '.join(text)
+    doc = nlp(processed_text)
+
+    events = []
+    
+    for ent in doc.ents:
+        if ent.label_ == 'EVENT':
+            event = {
+                'event': ent.text,
+                'start': ent.start_char,
+                'end': ent.end_char,
+                'context': [t.text for t in ent.sent],
+            }
+            events.append(event)
+            
+    for sent in doc.sents:
+        persons = [ent for ent in sent.ents if ent.label_ == 'PERSON']
+        locations = [ent for ent in sent.ents if ent.label_ in ['LOC', 'GPE', 'FAC', 'TIME']]
+        
+        for person in persons:
+            for location in locations:
+                event = {
+                    'event': person.text + ' ' + location.text,
+                    'start': min(person.start_char, location.start_char),
+                    'end': max(person.end_char, location.end_char),
+                    'context': [t.text for t in sent],
+                }
+                events.append(event)
+                           
+    return events
+
+
+def compute_lsi_on_subsets(df, text_column, category_column):
+    vectorizer = TfidfVectorizer()
+    lsa = TruncatedSVD(n_components=30, random_state=19)
+    results = {}
+
+    unique_categories = df[category_column].unique()
+
+    for category in unique_categories:
+        subset_df = df[df[category_column] == category]
+        dtm = vectorizer.fit_transform(subset_df[text_column].apply(lambda x: ' '.join(x)))
+        lsa.fit(dtm)
+        lsa_vectors = lsa.transform(dtm)
+        feature_names = vectorizer.get_feature_names_out()
+        topics = []
+
+        for topic_idx, topic in enumerate(lsa.components_):
+            top_features = [feature_names[i] for i in topic.argsort()[:-5 - 1:-1]]
+            topics.append(top_features)
+
+        results[category] = topics
+
+    return results
+
+
+def vectorize_lsi_results(lsi_results):
+    vectorizer = TfidfVectorizer()
+    category_vectors = {}
+
+    for category, topics in lsi_results.items():
+        features = [' '.join(topic) for topic in topics]
+        category_vectors[category] = vectorizer.fit_transform(features)
+
+    return category_vectors
+
+
+def compute_difference(category_vectors):
+    categories = list(category_vectors.keys())
+    num_categories = len(categories)
+    differences = np.zeros((num_categories, num_categories))
+    
+    svd = TruncatedSVD(n_components=min([vector.shape[1] for vector in category_vectors.values()]))
+    reduced_vectors = {category: svd.fit_transform(vector) for category, vector in category_vectors.items()}
+
+
+    for i in range(num_categories):
+        vector_i = reduced_vectors[categories[i]]
+        for j in range(i+1, num_categories):
+            vector_j = reduced_vectors[categories[j]]
+            similarity = cosine_similarity(vector_i, vector_j)[0][0]
+            difference = 1 - similarity
+            differences[i, j] = difference
+            differences[j, i] = difference
+
+    return differences

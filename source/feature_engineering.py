@@ -3,13 +3,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib
-import nltk
 import numpy as np
 
 from scipy.stats import f_oneway
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
-from source.functions import count_matches, min_max_scale_column, group_df, pos_tag_text, tense_counts, get_sentiment_scores
+from source.functions import count_matches, min_max_scale_column, group_df, pos_tag_text, tense_counts, get_sentiment_scores, extract_entities, count_entities, most_common_entities
 
 matplotlib.use('TkAgg')
 
@@ -573,6 +572,186 @@ def feature_engineering_emotion_analysis(df_sherlock_segments_vader):
     fg.set(xticks = range(1, 6, 1))
     fg.fig.suptitle('Emotion Analysis per Title')
     fg.set_axis_labels('Segments' , 'Average Compound Score')
+    fg.set_titles(row_template="{row_name}")
+    
+    plt.show()
+    
+    return None
+
+
+def feature_engineering_ner(df_sherlock_segments_ner):
+    
+    df_sherlock_segments_ner_outliers = df_sherlock_segments_ner.loc[df_sherlock_segments_ner['title'].isin(values_to_drop)]
+
+    df_sherlock_segments_ner = df_sherlock_segments_ner.loc[~df_sherlock_segments_ner['title'].isin(values_to_drop)]
+    df_sherlock_segments_ner['entities'] = df_sherlock_segments_ner['segments_ner'].apply(extract_entities)
+    df_sherlock_segments_ner_outliers['entities'] = df_sherlock_segments_ner_outliers['segments_ner'].apply(extract_entities)
+    
+    df_sherlock_segments_ner['person_entity_count'] = df_sherlock_segments_ner['entities'].apply(lambda parse_tree: count_entities(parse_tree, 'PERSON'))
+
+    df_sherlock_segments_ner['location_entity_count'] = df_sherlock_segments_ner['entities'].apply(lambda parse_tree: count_entities(parse_tree, 'LOCATION', 'GPE', 'FACILITY'))
+    df_sherlock_segments_ner_outliers['person_entity_count'] = df_sherlock_segments_ner_outliers['entities'].apply(lambda parse_tree: count_entities(parse_tree, 'PERSON'))
+
+    df_sherlock_segments_ner_outliers['location_entity_count'] = df_sherlock_segments_ner_outliers['entities'].apply(lambda parse_tree: count_entities(parse_tree, 'LOCATION', 'GPE', 'FACILITY'))
+ 
+    most_common_persons = df_sherlock_segments_ner['entities'].apply(lambda row: most_common_entities(row, ['PERSON']))
+    print("Most common persons \n", most_common_persons.value_counts().nlargest(10))
+    most_common_locations = df_sherlock_segments_ner['entities'].apply(lambda row: most_common_entities(row, ['LOCATION', 'GPE', 'FACILITY']))
+    print("Most common locations \n", most_common_locations.value_counts().nlargest(10))
+    
+    df_sherlock_segments_ner = min_max_scale_column(df_sherlock_segments_ner, 'person_entity_count_norm', 'person_entity_count', 'text_prepro_ner')
+
+    df_sherlock_segments_ner = min_max_scale_column(df_sherlock_segments_ner, 'location_entity_count_norm', 'location_entity_count', 'text_prepro_ner')
+    df_sherlock_segments_ner_outliers = min_max_scale_column(df_sherlock_segments_ner_outliers, 'person_entity_count_norm', 'person_entity_count', 'text_prepro_ner')
+
+    df_sherlock_segments_ner_outliers = min_max_scale_column(df_sherlock_segments_ner_outliers, 'location_entity_count_norm', 'location_entity_count', 'text_prepro_ner')
+    summary_stats_ner = df_sherlock_segments_ner[['segment_num', 'person_entity_count_norm', 'location_entity_count_norm']].groupby('segment_num').agg(['mean', 'std'])
+    
+    plt.figure(1)
+    sns.set_theme()
+    for i, color in enumerate(unique_colors):
+        sns.barplot(
+            x=[summary_stats_ner.index[i]],
+            y=[summary_stats_ner[('person_entity_count_norm', 'mean')].iloc[i]],
+            yerr=[summary_stats_ner[('person_entity_count_norm', 'std')].iloc[i]],
+            color=color
+        )
+    plt.title('Mean/Std for Person Count per segment')
+    plt.xlabel('Segment')
+    plt.ylabel('Person Count')
+    
+    plt.figure(2)
+    sns.set_theme()
+    for i, color in enumerate(unique_colors):
+        sns.barplot(
+            x=[summary_stats_ner.index[i]],
+            y=[summary_stats_ner[('location_entity_count_norm', 'mean')].iloc[i]],
+            yerr=[summary_stats_ner[('location_entity_count_norm', 'std')].iloc[i]],
+            color=color
+        )
+    plt.title('Mean/Std for Location Count per segment')
+    plt.xlabel('Segment')
+    plt.ylabel('Location Count')
+    
+    summary_stats_ner = df_sherlock_segments_ner[['segment_num', 'person_entity_count_norm', 'location_entity_count_norm']].groupby('segment_num').agg(['mean'])
+
+    summary_stats_ner = summary_stats_ner.reset_index()
+    summary_stats_ner = pd.melt(summary_stats_ner, id_vars=['segment_num'], var_name='stat', value_name='value')
+    summary_stats_ner = summary_stats_ner.drop(index=summary_stats_ner[(summary_stats_ner['stat'] == 'level_0') | summary_stats_ner['stat'] =='index'].index)
+
+    label_map = {'person_entity_count_norm' : 'PERSON' , 'location_entity_count_norm' : 'LOCATION'}
+
+    summary_stats_ner['Entities'] = summary_stats_ner['stat'].replace(label_map)
+    
+    plt.figure(3)
+    sns.set_theme()
+    sns.lineplot(data = summary_stats_ner, x='segment_num', y='value', hue='Entities')
+    plt.gca().set_xticks(range(1, 6, 1))
+    plt.title('Linguistic Drift over time')
+    plt.xlabel('Segment')
+    plt.ylabel('Linguistic Drift')
+    ls_anova = group_df(df_sherlock_segments_ner, 'person_entity_count_norm')
+
+    fvalue_person, pvalue_person = f_oneway(ls_anova[0], ls_anova[1], ls_anova[2], ls_anova[3], ls_anova[4])
+    print('Results for ANOVA test for person entities (fvalue, pvalue): {}, {}'.format(fvalue_person, pvalue_person))
+    ls_anova = group_df(df_sherlock_segments_ner, 'location_entity_count_norm')
+
+    fvalue_location, pvalue_location = f_oneway(ls_anova[0], ls_anova[1], ls_anova[2], ls_anova[3], ls_anova[4])
+    print('Results for ANOVA test for location entities (fvalue, pvalue): {}, {}'.format(fvalue_location, pvalue_location))
+    
+    col1 = [fvalue_person, fvalue_location, pvalue_person, pvalue_location]
+    col2 = ['Person', 'Location', 'Person', 'Location']
+    col3 = ['fvalue', 'fvalue', 'pvalue', 'pvalue']
+
+    df_dict = {'value': col1, 'plot_element': col2, 'category_value': col3}
+
+    df_anova_ner = pd.DataFrame(df_dict)
+
+    plt.figure(4)
+    sns.set_theme()
+    g = sns.barplot(data = df_anova_ner, x='plot_element', y ='value', hue = 'category_value')
+    plt.xlabel('NER')
+    plt.ylabel('Value')
+    g.get_legend().set_title("")
+    plt.title('Results of ANOVA tests for NER per segment')
+
+    df_sherlock_segments_ner_vec = df_sherlock_segments_ner[['title', 'person_entity_count_norm', 'location_entity_count_norm']]
+
+    df_sherlock_segments_ner_vec = df_sherlock_segments_ner_vec.groupby('title').agg(lambda x: x.tolist())
+
+    df_sherlock_segments_ner_vec['vector'] = df_sherlock_segments_ner_vec.apply(lambda row: [val for sublist in row.values for val in sublist], axis=1)
+
+    df_sherlock_segments_ner_vec.reset_index(inplace=True)
+
+    df_sherlock_segments_ner_vec = df_sherlock_segments_ner_vec[['title', 'vector']]
+
+    matrix_vec = np.array(df_sherlock_segments_ner_vec['vector'].tolist())
+    similarity_matrix = cosine_similarity(matrix_vec)
+    mask = np.triu(np.ones_like(similarity_matrix, dtype=bool))
+
+    sns.set(font_scale=1)
+    fig, ax = plt.subplots(figsize=(30, 30))
+    plt.figure(5)
+    sns.heatmap(similarity_matrix, annot=False, cmap='Blues', mask=mask, ax=ax)
+    plt.subplots_adjust(left=0.25, bottom=0.25, right=0.95, top=0.95)
+    plt.title('Cosine similarity matrix')
+    linkage_matrix = linkage(similarity_matrix, method='ward')
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    plt.figure(6)
+    dendrogram(linkage_matrix, labels=range(1,57))
+    plt.title('Dendrogram of Cosine Similarity Matrix')
+    plt.xlabel('Texts')
+    plt.ylabel('Distance')
+    plt.show()
+    
+    cluster_assignments = fcluster(linkage_matrix, t=2, criterion = 'maxclust')
+
+    df_sherlock_segments_ner_vec['cluster'] = cluster_assignments
+
+    df_sherlock_segments_ner = pd.merge(df_sherlock_segments_ner, df_sherlock_segments_ner_vec[['title', 'cluster']], on='title', how='left')
+
+    df_sherlock_pivot = df_sherlock_segments_ner[['title', 'segment_num', 'person_entity_count_norm', 'location_entity_count_norm', 'cluster']]
+
+    df_sherlock_pivot = pd.melt(df_sherlock_pivot, id_vars=['segment_num','title', 'cluster'], var_name='var', value_name= 'val')
+    df_sherlock_pivot = df_sherlock_pivot.rename(columns={'cluster' : 'Cluster'})
+
+    label_map = {'person_entity_count_norm' : 'PERSON' , 'location_entity_count_norm' : 'LOCATION'}
+    df_sherlock_pivot['Entities'] = df_sherlock_pivot['var'].replace(label_map)
+
+    fg = sns.FacetGrid(df_sherlock_pivot, col='Cluster')
+
+    fg.map_dataframe(sns.lineplot, x='segment_num', y='val', hue='Entities')
+
+    fg.set(xticks = range(1, 6, 1))
+
+    fg.fig.suptitle('NER per Cluster')
+    fg.set_axis_labels('Segments' , 'Linguistic Drift')
+
+    fg.add_legend()
+    
+    df_sherlock_pivot_cluster1 = df_sherlock_pivot.loc[df_sherlock_pivot['Cluster'] == 1]
+
+    df_sherlock_pivot_cluster2 = df_sherlock_pivot.loc[df_sherlock_pivot['Cluster'] == 2]
+    
+    df_sherlock_pivot = df_sherlock_segments_ner_outliers[['title', 'segment_num', 'person_entity_count_norm', 'location_entity_count_norm']]
+
+    df_sherlock_pivot = pd.melt(df_sherlock_pivot, id_vars=['segment_num','title'], var_name='var', value_name= 'val')
+
+    df_sherlock_pivot = df_sherlock_pivot.rename(columns={'title' : 'Title'})
+
+    label_map = {'person_entity_count_norm' : 'PERSON' , 'location_entity_count_norm' : 'LOCATION'}
+
+    df_sherlock_pivot['Entities'] = df_sherlock_pivot['var'].replace(label_map)
+
+    fg = sns.FacetGrid(df_sherlock_pivot, row='Title')
+
+    fg.map_dataframe(sns.lineplot, x='segment_num', y='val', hue='Entities')
+    fg.add_legend(loc='center right', bbox_to_anchor=(1.2, 0.25))
+    fg.fig.subplots_adjust(top=0.85)
+    fg.set(xticks = range(1, 6, 1))
+    fg.fig.suptitle('NER per Title')
+    fg.set_axis_labels('Segments' , 'Linguistic Drift')
     fg.set_titles(row_template="{row_name}")
     
     plt.show()
