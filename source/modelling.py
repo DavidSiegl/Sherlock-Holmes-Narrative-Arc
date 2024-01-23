@@ -49,7 +49,7 @@ def clustering(df_sherlock_modelling):
     
     print(df_sherlock_modelling_cluster["cluster"].sort_values())
     
-    return df_sherlock_modelling_cluster
+    return None
 
 
 def pca(df_sherlock_modelling):
