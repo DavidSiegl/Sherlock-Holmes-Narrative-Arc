@@ -34,11 +34,12 @@ warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 df_sherlock_modeling = joblib.load('./data/df_sherlock_modeling.lib')
 df_sherlock_modeling['period'] = df_sherlock_modeling['year'].apply(lambda x: 0 if x <= 1893 else 1)
 
+#clustering(df_sherlock_modeling)
+
 #pca(df_sherlock_modeling)
 
 #logistic_regression(df_sherlock_modeling)
 
 #svm(df_sherlock_modeling)
 
-df_sherlock_modeling_cluster = clustering(df_sherlock_modeling)
-narrative_arc(df_sherlock_modeling, df_sherlock_modeling_cluster)
+narrative_arc(df_sherlock_modeling)

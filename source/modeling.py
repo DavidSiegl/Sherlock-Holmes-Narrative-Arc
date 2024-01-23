@@ -148,7 +148,17 @@ def svm(df_sherlock_modeling):
     return None
 
 
-def narrative_arc(df_sherlock_modeling, df_sherlock_modeling_cluster):
+def narrative_arc(df_sherlock_modeling):
+    
+    df_sherlock_modeling_cluster = df_sherlock_modeling[['title', 'staging_count_norm', 'plot_progress_count_norm', 'cognitive_tension_count_norm', 'past_count_norm', 'present_count_norm', 'future_count_norm', 'avg_compound_score', 'person_entity_count_norm', 'location_entity_count_norm', 'period']]
+
+    df_sherlock_modeling_cluster = df_sherlock_modeling_cluster.groupby('title').agg('mean')
+    kmeans = KMeans(n_clusters=2, random_state=19)
+
+    kmeans.fit(df_sherlock_modeling_cluster)
+    labels = kmeans.labels_
+
+    df_sherlock_modeling_cluster['cluster'] = labels
     
     df_sherlock_modeling_cluster.reset_index(inplace=True)
 
@@ -184,7 +194,7 @@ def narrative_arc(df_sherlock_modeling, df_sherlock_modeling_cluster):
 
     fg.map_dataframe(sns.lineplot, x='segment_num', y='pca')
 
-    fg.fig.subplots_adjust(top=0.7, bottom=-0.25)
+    fg.fig.subplots_adjust(top=0.85)
 
     fg.set(xticks = range(1, 6, 1))
 
