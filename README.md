@@ -7,7 +7,9 @@ Install the required libraries
 
 ```pip install -r requirements.txt``` (Python version 3.11 is recommended)
 
-Also make sure that the required spaCy model is installed
+Also make sure that the required NLTK and spaCy modules are installed
+
+```<python-version> -m nltk.downloader punkt, averaged_perceptron_tagger, wordnet, vader_lexicon, maxent_ne_chunker, words```
 
 ```<python-version> -m spacy download en_core_web_md```
 

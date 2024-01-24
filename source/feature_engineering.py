@@ -2,15 +2,12 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
-import matplotlib
 import numpy as np
 
 from scipy.stats import f_oneway
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.cluster.hierarchy import dendrogram, linkage, fcluster
 from source.functions import count_matches, min_max_scale_column, group_df, pos_tag_text, tense_counts, get_sentiment_scores, extract_entities, count_entities, most_common_entities
-
-matplotlib.use('TkAgg')
 
 
 values_to_drop = ['THE HOUND OF THE BASKERVILLES', 'THE VALLEY OF FEAR', 'A STUDY IN SCARLET', 'THE SIGN OF THE FOUR']
@@ -703,7 +700,6 @@ def feature_engineering_ner(df_sherlock_segments_ner):
     plt.title('Dendrogram of Cosine Similarity Matrix')
     plt.xlabel('Texts')
     plt.ylabel('Distance')
-    plt.show()
     
     cluster_assignments = fcluster(linkage_matrix, t=2, criterion = 'maxclust')
 

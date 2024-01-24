@@ -5,14 +5,6 @@ import string
 import nltk
 
 from collections import defaultdict
-
-nltk.download('punkt')
-nltk.download('averaged_perceptron_tagger')
-nltk.download('wordnet')
-nltk.download('vader_lexicon')
-nltk.download('maxent_ne_chunker')
-nltk.download('words')
-
 from source.functions import remove_numeric, segment_text, lem_text
 
 translator = str.maketrans('', '', string.punctuation)
@@ -49,6 +41,19 @@ def preprocessing():
     
     df_sherlock['text_prepro'] = df_sherlock['text'].apply(lambda x: remove_numeric(x))
           
+    return df_sherlock
+
+
+def preprocessing_lemmatisation(df_sherlock):
+    
+    df_sherlock['text_prepro_lemmatisation'] = df_sherlock['text_prepro'].str.lower()
+    df_sherlock['text_prepro_lemmatisation'] = df_sherlock['text_prepro_lemmatisation'].apply(lambda x: x.translate(translator))
+
+    df_sherlock['text_prepro_lemmatisation'] = df_sherlock['text_prepro_lemmatisation'].apply(lambda x: ' '.join([word for word in x.split() if word not in (stopwords)]))
+    df_sherlock['text_prepro_lemmatisation'] = df_sherlock['text_prepro_lemmatisation'].apply(lambda x: nltk.tokenize.word_tokenize(x))
+    
+    df_sherlock['text_lemmed'] = df_sherlock['text_prepro_lemmatisation'].apply(lem_text)
+    
     return df_sherlock
 
 
@@ -139,11 +144,3 @@ def preprocessing_lsi(df_sherlock):
     df_sherlock_segments_lsi.reset_index(inplace=True)
 
     return df_sherlock_segments_lsi
-
-
-def preprocessing_lemmatisation(df_sherlock):
-    
-    df_sherlock['text_lemmed'] = df_sherlock['text_prepro_temp'].apply(lem_text)
-    
-    return df_sherlock
-

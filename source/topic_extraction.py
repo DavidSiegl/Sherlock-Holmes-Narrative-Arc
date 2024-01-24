@@ -2,8 +2,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import matplotlib
 
 from source.functions import extract_events, compute_lsi_on_subsets, vectorize_lsi_results, compute_difference
+
+matplotlib.use('TkAgg')
 
 def event_extraction(df_sherlock_segments_event):
     df_sherlock_segments_event['events'] = df_sherlock_segments_event['segments_event'].apply(extract_events)

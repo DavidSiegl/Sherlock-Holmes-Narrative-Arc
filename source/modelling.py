@@ -2,6 +2,7 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib
 
 from sklearn.metrics import silhouette_score, classification_report
 from sklearn.cluster import KMeans
@@ -9,6 +10,8 @@ from sklearn.decomposition import PCA
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
+
+matplotlib.use('TkAgg')
 
 
 def clustering(df_sherlock_modelling):
