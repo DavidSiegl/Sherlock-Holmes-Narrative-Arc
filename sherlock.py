@@ -1,14 +1,4 @@
-import warnings
 import argparse
-import joblib
-
-from source.preprocessing import preprocessing, preprocessing_narrative_coherence, preprocessing_temporal_usage, preprocessing_ee, preprocessing_lemmatisation, preprocessing_emotion_analysis, preprocessing_ner, preprocessing_lsi
-from source.eda import eda
-from source.feature_engineering import feature_engineering_narrative_coherence, feature_engineering_temporal_usage, feature_engineering_emotion_analysis, feature_engineering_ner
-from source.topic_extraction import event_extraction, lsi
-from source.modelling import clustering, pca, logistic_regression, svm, narrative_arc
-from pandas.errors import SettingWithCopyWarning
-
 
 parser = argparse.ArgumentParser(
     prog = "Sherlock Holmes Narrative Arc",
@@ -20,6 +10,17 @@ parser.add_argument("-m", "--module", dest="module", required=True, type=str, ch
 args = parser.parse_args()
 
 module = args.module
+
+import joblib
+import warnings
+
+from source.preprocessing import preprocessing, preprocessing_narrative_coherence, preprocessing_temporal_usage, preprocessing_ee, preprocessing_lemmatisation, preprocessing_emotion_analysis, preprocessing_ner, preprocessing_lsi
+from source.eda import eda
+from source.feature_engineering import feature_engineering_narrative_coherence, feature_engineering_temporal_usage, feature_engineering_emotion_analysis, feature_engineering_ner
+from source.topic_extraction import event_extraction, lsi
+from source.modelling import clustering, pca, logistic_regression, svm, narrative_arc
+from pandas.errors import SettingWithCopyWarning
+
 
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 warnings.simplefilter(action='ignore', category=FutureWarning)
